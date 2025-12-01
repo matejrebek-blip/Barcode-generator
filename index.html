@@ -1,136 +1,374 @@
 
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>FUB523_25V18 Sampling</title>
-    <!-- JsBarcode CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 24px; text-align: center; }
-        h1 { font-size: 28px; margin-bottom: 16px; }
-        form { margin: 0 auto; display: inline-block; text-align: left; padding: 16px 20px; border: 1px solid #ddd; border-radius: 8px; }
-        .reactor-list { display: grid; grid-template-columns: repeat(4, auto); gap: 8px 16px; margin-top: 8px; }
-        #barcodes { margin-top: 24px; display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 640px; margin-left: auto; margin-right: auto; }
-        .barcode-card { border: 1px solid #eee; border-radius: 8px; padding: 12px; text-align: center; background: #fff; }
-        .barcode-card p { margin: 6px 0; font-weight: bold; font-size: 14px; }
-        .download-btn { margin-top: 16px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
-    </style>
+  <meta charset="UTF-8" />
+  <title>FUB523_25V18 Sampling</title>
+
+  <!-- Mobile-friendly scaling -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- JsBarcode CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+  <style>
+    :root {
+      --card-max-width: 720px; /* max content width */
+      --gap: 16px;
+      --pad: 12px;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 24px;
+      text-align: center;
+      color: #111;
+      background: #fafafa;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 16px;
+    }
+
+    form {
+      margin: 0 auto;
+      display: inline-block;
+      text-align: left;
+      padding: 16px 20px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      background: #fff;
+      max-width: var(--card-max-width);
+      width: 100%;
+    }
+
+    .row { margin-top: 12px; }
+    label { font-weight: bold; }
+
+    .hint {
+      font-size: 12px;
+      color: #666;
+      margin-top: 6px;
+    }
+
+    .reactor-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .reactor-list {
+      display: grid;
+      grid-template-columns: repeat(4, auto);
+      gap: 8px 16px;
+      margin-top: 8px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      padding: 10px 14px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #f5f5f5;
+      font-size: 14px;
+    }
+
+    /* One barcode per row */
+    #barcodes {
+      margin: 24px auto 0;
+      display: grid;
+      grid-template-columns: 1fr; /* single column */
+      gap: var(--gap);            /* vertical spacing */
+      max-width: var(--card-max-width);
+      width: 100%;
+      padding: 0 var(--pad);
+    }
+
+    .barcode-card {
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: var(--pad);
+      text-align: center;
+      background: #fff;
+    }
+
+    .barcode-card svg {
+      width: 100%;     /* scale to card width */
+      height: auto;    /* keep aspect ratio */
+    }
+
+    .barcode-card p {
+      margin: 8px 0 0;
+      font-weight: bold;
+      font-size: 16px;
+      word-break: break-word;
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 600px) {
+      body { font-size: 18px; }
+      h1 { font-size: 24px; }
+      .reactor-list { grid-template-columns: repeat(2, auto); } /* easier touch targets */
+      button { font-size: 16px; }
+    }
+
+    /* Print-friendly (optional) */
+    @media print {
+      body { margin: 10mm; }
+      #barcodes { gap: 8mm; }
+      .barcode-card { page-break-inside: avoid; }
+    }
+  </style>
 </head>
 <body>
-    <h1>FUB523_25V18 Sampling</h1>
+  <h1>FUB523_25V18 Sampling</h1>
 
-    <form id="barcodeForm">
-        <label>Select Date:</label><br>
-        <input type="date" id="sampleDate" required>
-        <div style="margin-top:10px;">
-            <label>Select Bioreactors:</label>
-            <div>
-                <label><input type="checkbox" id="selectAll"> Select all</label>
-            </div>
-            <div class="reactor-list" id="reactorList"></div>
-        </div>
-        <button type="submit" style="margin-top:15px;">Generate Barcodes</button>
-    </form>
+  <form id="barcodeForm">
+    <div class="row">
+      <label for="sampleDate">Select Date:</label><br>
+      <input type="date" id="sampleDate" required>
+      <div class="hint">Day 0 is 25.11.2025 (2025‑11‑25). The script calculates D<span style="font-style:italic;">n</span> automatically.</div>
+    </div>
 
-    <div id="barcodes"></div>
-    <button id="downloadAll" class="download-btn" style="display:none;">Download All as PNG</button>
+    <div class="row">
+      <label>Select Bioreactors:</label>
+      <div class="reactor-controls">
+        <label><input type="checkbox" id="selectAll"> Select all (14)</label>
+        <button type="button" id="clearSelection">Clear</button>
+      </div>
+      <div class="reactor-list" id="reactorList"><!-- Checkboxes inserted here --></div>
+    </div>
 
-    <script>
-        const startDate = new Date("2025-11-25");
-        const reactorIds = [];
-        for (let i = 5; i <= 17; i++) {
-            reactorIds.push(i < 10 ? `BR0${i}` : `BR${i}`);
+    <div class="actions">
+      <button type="submit">Generate Barcodes</button>
+      <button type="button" id="downloadAll" style="display:none;">Download All as PNG</button>
+    </div>
+  </form>
+
+  <div id="barcodes"></div>
+
+  <script>
+    // Day 0 anchor (25.11.2025)
+    const startDate = new Date("2025-11-25");
+
+    // Allowed reactors: BR05..BR17 + V1100
+    const reactorIds = [];
+    for (let i = 5; i <= 17; i++) {
+      reactorIds.push(i < 10 ? `BR0${i}` : `BR${i}`);
+    }
+    reactorIds.push("V1100");
+
+    const reactorListEl = document.getElementById("reactorList");
+
+    // Create checkboxes dynamically
+    reactorIds.forEach(id => {
+      const label = document.createElement("label");
+      label.style.fontWeight = "normal";
+      label.innerHTML = `<input type="checkbox" name="reactor" value="${id}"> ${id}`;
+      reactorListEl.appendChild(label);
+    });
+
+    const selectAllEl = document.getElementById("selectAll");
+    const clearSelectionBtn = document.getElementById("clearSelection");
+
+    function getReactorCheckboxes() {
+      return Array.from(document.querySelectorAll('input[name="reactor"]'));
+    }
+
+    function updateSelectAllState() {
+      const boxes = getReactorCheckboxes();
+      const total = boxes.length;
+      const checkedCount = boxes.filter(b => b.checked).length;
+
+      if (checkedCount === 0) {
+        selectAllEl.checked = false;
+        selectAllEl.indeterminate = false;
+      } else if (checkedCount === total) {
+        selectAllEl.checked = true;
+        selectAllEl.indeterminate = false;
+      } else {
+        selectAllEl.checked = false;
+        selectAllEl.indeterminate = true; // partial selection
+      }
+    }
+
+    // Toggle all on select-all click
+    selectAllEl.addEventListener("change", () => {
+      const boxes = getReactorCheckboxes();
+      boxes.forEach(b => b.checked = selectAllEl.checked);
+      selectAllEl.indeterminate = false;
+    });
+
+    // Keep select-all synced when any individual box changes
+    getReactorCheckboxes().forEach(cb => {
+      cb.addEventListener("change", updateSelectAllState);
+    });
+
+    // Clear selection helper
+    clearSelectionBtn.addEventListener("click", () => {
+      getReactorCheckboxes().forEach(b => b.checked = false);
+      updateSelectAllState();
+    });
+
+    // Barcode generation
+    document.getElementById('barcodeForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const dateStr = document.getElementById('sampleDate').value;
+      const selectedReactors = getReactorCheckboxes()
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+
+      if (!dateStr) {
+        alert("Please select a date.");
+        return;
+      }
+      if (selectedReactors.length === 0) {
+        alert("Please select at least one bioreactor.");
+        return;
+      }
+
+      const selectedDate = new Date(dateStr);
+      const diffMs = selectedDate - startDate;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const dayLabel = `D${diffDays}`;
+
+      // Optional guard: warn if before Day 0
+      if (diffDays < 0) {
+        if (!confirm(`Selected date is before Day 0 (25.11.2025).\nThis will produce ${dayLabel}.\nProceed?`)) {
+          return;
         }
-        reactorIds.push("V1100");
+      }
 
-        const reactorListEl = document.getElementById("reactorList");
-        reactorIds.forEach(id => {
-            const label = document.createElement("label");
-            label.innerHTML = `<input type="checkbox" name="reactor" value="${id}"> ${id}`;
-            reactorListEl.appendChild(label);
+      // Clear old barcodes
+      const container = document.getElementById('barcodes');
+      container.innerHTML = '';
+
+      // Generate a barcode card per reactor (1 per row)
+      selectedReactors.forEach(reactor => {
+        const sampleId = `FUB523_25V18_${reactor}_${dayLabel}`;
+
+        const card = document.createElement('div');
+        card.className = 'barcode-card';
+
+        // Unique ID per barcode SVG
+        const svgId = `bc-${reactor.replace(/[^A-Za-z0-9]/g, '')}`;
+
+        card.innerHTML = `<svg id="${svgId}"></svg><p>${sampleId}</p>`;
+        container.appendChild(card);
+
+        // Generate barcode (mobile-friendly sizing)
+        JsBarcode(`#${svgId}`, sampleId, {
+          format: "CODE128",
+          displayValue: true,
+          fontSize: 22,  // larger text for mobile
+          width: 3,      // thicker bars
+          height: 100,   // taller barcode for readability
+          margin: 8
         });
+      });
 
-        const selectAllEl = document.getElementById("selectAll");
-        function getReactorCheckboxes() {
-            return Array.from(document.querySelectorAll('input[name="reactor"]'));
-        }
-        selectAllEl.addEventListener("change", () => {
-            getReactorCheckboxes().forEach(cb => cb.checked = selectAllEl.checked);
+      // Show export button
+      document.getElementById('downloadAll').style.display = 'inline-block';
+
+      // Refresh select-all visual state after submit
+      updateSelectAllState();
+    });
+
+    // ---- Export all barcodes into ONE PNG ----
+    document.getElementById('downloadAll').addEventListener('click', async function() {
+      const svgs = Array.from(document.querySelectorAll('#barcodes svg'));
+      const labels = Array.from(document.querySelectorAll('#barcodes p'));
+      if (svgs.length === 0) {
+        alert("No barcodes to export.");
+        return;
+      }
+
+      // Convert all SVGs to images and measure
+      const targetWidth = Math.min(900, document.documentElement.clientWidth - 40); // responsive export width
+      const rowPad = 20;      // vertical padding between rows
+      const textPad = 16;     // space under each barcode before text
+      const fontSize = 18;    // label font size
+
+      const images = await Promise.all(svgs.map((svg, i) => {
+        return new Promise(resolve => {
+          const serializer = new XMLSerializer();
+          const svgData = serializer.serializeToString(svg);
+
+          const img = new Image();
+          img.onload = function() {
+            // Scale to target width (with left/right padding)
+            const maxDrawWidth = targetWidth - 40;
+            const scale = Math.min(1, maxDrawWidth / img.width);
+            const drawW = img.width * scale;
+            const drawH = img.height * scale;
+            resolve({ img, drawW, drawH, label: labels[i].textContent });
+          };
+          img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
         });
+      }));
 
-        document.getElementById('barcodeForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const dateStr = document.getElementById('sampleDate').value;
-            const selectedReactors = getReactorCheckboxes().filter(cb => cb.checked).map(cb => cb.value);
-            if (!dateStr || selectedReactors.length === 0) return;
+      // Calculate total height
+      const totalHeight = images.reduce((sum, it) => {
+        return sum + it.drawH + textPad + rowPad;
+      }, 0);
 
-            const selectedDate = new Date(dateStr);
-            const diffDays = Math.floor((selectedDate - startDate) / (1000 * 60 * 60 * 24));
-            const dayLabel = `D${diffDays}`;
+      // High-DPI export
+      const dpr = window.devicePixelRatio || 1;
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
 
-            const container = document.getElementById('barcodes');
-            container.innerHTML = '';
+      canvas.width = Math.ceil(targetWidth * dpr);
+      canvas.height = Math.ceil(totalHeight * dpr);
 
-            selectedReactors.forEach(reactor => {
-                const sampleId = `FUB523_25V18_${reactor}_${dayLabel}`;
-                const card = document.createElement('div');
-                card.className = 'barcode-card';
-                const svgId = `bc-${reactor}`;
-                card.innerHTML = `<svg id="${svgId}"></svg><p>${sampleId}</p>`;
-                container.appendChild(card);
+      // Scale drawing for retina
+      ctx.scale(dpr, dpr);
 
-                JsBarcode(`#${svgId}`, sampleId, { format: "CODE128", displayValue: true, fontSize: 18, width: 2, height: 80 });
-            });
+      // Background white for printing
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            document.getElementById('downloadAll').style.display = 'inline-block';
-        });
+      // Draw each barcode row
+      let y = 20; // top padding
+      ctx.fillStyle = '#000';
+      ctx.font = `${fontSize}px Arial`;
 
-        // Download all barcodes as one PNG
-        document.getElementById('downloadAll').addEventListener('click', function() {
-            const svgs = document.querySelectorAll('#barcodes svg');
-            const labels = document.querySelectorAll('#barcodes p');
+      images.forEach(({ img, drawW, drawH, label }) => {
+        // Center image horizontally
+        const x = (targetWidth - drawW) / 2;
 
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, x, y, drawW, drawH);
+        y += drawH + textPad;
 
-            const width = 700; // fixed width for all
-            const heightPerBarcode = 120; // space for barcode + text
-            const totalHeight = svgs.length * heightPerBarcode;
+        // Draw label centered under barcode
+        const textX = 20;
+        ctx.fillText(label, textX, y);
+        y += rowPad;
+      });
 
-            canvas.width = width;
-            canvas.height = totalHeight;
+      // Export one PNG
+      const pngData = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = 'FUB523_25V18_barcodes.png';
+      link.href = pngData;
+      link.click();
+    });
 
-            let y = 0;
-            const promises = [];
-
-            svgs.forEach((svg, i) => {
-                const serializer = new XMLSerializer();
-                const svgData = serializer.serializeToString(svg);
-                const img = new Image();
-                const labelText = labels[i].textContent;
-
-                const promise = new Promise(resolve => {
-                    img.onload = function() {
-                        ctx.drawImage(img, 20, y, img.width, img.height);
-                        ctx.font = "16px Arial";
-                        ctx.fillText(labelText, 20, y + img.height + 20);
-                        y += heightPerBarcode;
-                        resolve();
-                    };
-                    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
-                });
-                promises.push(promise);
-            });
-
-            Promise.all(promises).then(() => {
-                const pngFile = canvas.toDataURL('image/png');
-                const link = document.createElement('a');
-                link.download = 'all_barcodes.png';
-                link.href = pngFile;
-                link.click();
-            });
-        });
-    </script>
+    // Initialize select-all to reflect default (none checked)
+    updateSelectAllState();
+  </script>
 </body>
 </html>
+
+
