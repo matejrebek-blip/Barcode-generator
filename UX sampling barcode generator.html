@@ -1,0 +1,136 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>FUB523_25V18 Sampling</title>
+    <!-- JsBarcode CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; text-align: center; }
+        h1 { font-size: 28px; margin-bottom: 16px; }
+        form { margin: 0 auto; display: inline-block; text-align: left; padding: 16px 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .reactor-list { display: grid; grid-template-columns: repeat(4, auto); gap: 8px 16px; margin-top: 8px; }
+        #barcodes { margin-top: 24px; display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 640px; margin-left: auto; margin-right: auto; }
+        .barcode-card { border: 1px solid #eee; border-radius: 8px; padding: 12px; text-align: center; background: #fff; }
+        .barcode-card p { margin: 6px 0; font-weight: bold; font-size: 14px; }
+        .download-btn { margin-top: 16px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>FUB523_25V18 Sampling</h1>
+
+    <form id="barcodeForm">
+        <label>Select Date:</label><br>
+        <input type="date" id="sampleDate" required>
+        <div style="margin-top:10px;">
+            <label>Select Bioreactors:</label>
+            <div>
+                <label><input type="checkbox" id="selectAll"> Select all</label>
+            </div>
+            <div class="reactor-list" id="reactorList"></div>
+        </div>
+        <button type="submit" style="margin-top:15px;">Generate Barcodes</button>
+    </form>
+
+    <div id="barcodes"></div>
+    <button id="downloadAll" class="download-btn" style="display:none;">Download All as PNG</button>
+
+    <script>
+        const startDate = new Date("2025-11-25");
+        const reactorIds = [];
+        for (let i = 5; i <= 17; i++) {
+            reactorIds.push(i < 10 ? `BR0${i}` : `BR${i}`);
+        }
+        reactorIds.push("V1100");
+
+        const reactorListEl = document.getElementById("reactorList");
+        reactorIds.forEach(id => {
+            const label = document.createElement("label");
+            label.innerHTML = `<input type="checkbox" name="reactor" value="${id}"> ${id}`;
+            reactorListEl.appendChild(label);
+        });
+
+        const selectAllEl = document.getElementById("selectAll");
+        function getReactorCheckboxes() {
+            return Array.from(document.querySelectorAll('input[name="reactor"]'));
+        }
+        selectAllEl.addEventListener("change", () => {
+            getReactorCheckboxes().forEach(cb => cb.checked = selectAllEl.checked);
+        });
+
+        document.getElementById('barcodeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const dateStr = document.getElementById('sampleDate').value;
+            const selectedReactors = getReactorCheckboxes().filter(cb => cb.checked).map(cb => cb.value);
+            if (!dateStr || selectedReactors.length === 0) return;
+
+            const selectedDate = new Date(dateStr);
+            const diffDays = Math.floor((selectedDate - startDate) / (1000 * 60 * 60 * 24));
+            const dayLabel = `D${diffDays}`;
+
+            const container = document.getElementById('barcodes');
+            container.innerHTML = '';
+
+            selectedReactors.forEach(reactor => {
+                const sampleId = `FUB523_25V18_${reactor}_${dayLabel}`;
+                const card = document.createElement('div');
+                card.className = 'barcode-card';
+                const svgId = `bc-${reactor}`;
+                card.innerHTML = `<svg id="${svgId}"></svg><p>${sampleId}</p>`;
+                container.appendChild(card);
+
+                JsBarcode(`#${svgId}`, sampleId, { format: "CODE128", displayValue: true, fontSize: 18, width: 2, height: 80 });
+            });
+
+            document.getElementById('downloadAll').style.display = 'inline-block';
+        });
+
+        // Download all barcodes as one PNG
+        document.getElementById('downloadAll').addEventListener('click', function() {
+            const svgs = document.querySelectorAll('#barcodes svg');
+            const labels = document.querySelectorAll('#barcodes p');
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const width = 700; // fixed width for all
+            const heightPerBarcode = 120; // space for barcode + text
+            const totalHeight = svgs.length * heightPerBarcode;
+
+            canvas.width = width;
+            canvas.height = totalHeight;
+
+            let y = 0;
+            const promises = [];
+
+            svgs.forEach((svg, i) => {
+                const serializer = new XMLSerializer();
+                const svgData = serializer.serializeToString(svg);
+                const img = new Image();
+                const labelText = labels[i].textContent;
+
+                const promise = new Promise(resolve => {
+                    img.onload = function() {
+                        ctx.drawImage(img, 20, y, img.width, img.height);
+                        ctx.font = "16px Arial";
+                        ctx.fillText(labelText, 20, y + img.height + 20);
+                        y += heightPerBarcode;
+                        resolve();
+                    };
+                    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+                });
+                promises.push(promise);
+            });
+
+            Promise.all(promises).then(() => {
+                const pngFile = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = 'all_barcodes.png';
+                link.href = pngFile;
+                link.click();
+            });
+        });
+    </script>
+</body>
+</html>
